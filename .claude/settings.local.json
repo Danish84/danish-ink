@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/danis/.local/bin/**)",
+      "Bash(find \"/c/Users/danis/.vscode/extensions\" -type d -name \"*claude*\" 2>/dev/null | head -5)",
+      "Read(//c/Users/danis/.vscode/extensions/**)",
+      "Skill(tdd)",
+      "Skill(tdd:*)",
+      "Bash(ls \"C:/Users/danis/.claude/projects/c--Danish-Claude-Code-Projects-personal-website/memory/\" 2>/dev/null || echo \"memory dir empty or new\")",
+      "Read(//c/Users/danis/.claude/projects/c--Danish-Claude-Code-Projects-personal-website/**)"
+    ]
+  }
+}
