@@ -1,11 +1,22 @@
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { fetchAllFeeds, type FeedSource } from "./rss";
-import { saveDigest } from "./persistence";
+import { feedSourcesFromEnv } from "./feeds";
+import { fetchAllFeeds, type FeedSource, type NormalizedItem } from "./rss";
+import { saveDigest, type SaveDigestInput } from "./persistence";
 import { summarize, type Slot } from "./summarize";
 
-const FEEDS: FeedSource[] = [
-  { name: "BBC World", url: "http://feeds.bbci.co.uk/news/world/rss.xml" },
-];
+type Logger = Pick<typeof console, "log" | "error">;
+
+export type RunAgentOptions = {
+  slot: Slot;
+  date?: string;
+  feeds?: FeedSource[];
+  logger?: Logger;
+  loadFeeds?: () => FeedSource[];
+  fetchFeeds?: (sources: FeedSource[]) => Promise<NormalizedItem[]>;
+  summarizeDigest?: typeof summarize;
+  save?: (input: SaveDigestInput) => Promise<void>;
+};
 
 function parseSlot(): Slot {
   const { values } = parseArgs({
@@ -23,42 +34,62 @@ function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function main() {
-  const slot = parseSlot();
-  const date = todayDateString();
-  console.log(`[agent] Generating ${slot} digest for ${date}`);
+export async function runAgent({
+  slot,
+  date = todayDateString(),
+  feeds,
+  logger = console,
+  loadFeeds = feedSourcesFromEnv,
+  fetchFeeds = fetchAllFeeds,
+  summarizeDigest = summarize,
+  save = saveDigest,
+}: RunAgentOptions): Promise<void> {
+  logger.log(`[agent] Generating ${slot} digest for ${date}`);
 
   try {
-    const items = await fetchAllFeeds(FEEDS);
+    const sources = feeds ?? loadFeeds();
+    logger.log(`[agent] Fetching ${sources.length} feeds`);
+
+    const items = await fetchFeeds(sources);
     if (items.length === 0) {
       throw new Error("No items returned from any feed");
     }
-    console.log(`[agent] Fetched ${items.length} items`);
+    logger.log(`[agent] Fetched ${items.length} items`);
 
-    const content = await summarize({ items, slot });
-    console.log(`[agent] Generated digest (${content.length} chars)`);
+    const content = await summarizeDigest({ items, slot });
+    logger.log(`[agent] Generated digest (${content.length} chars)`);
 
-    await saveDigest({ date, slot, content, status: "success" });
-    console.log(`[agent] Saved ${date} ${slot}`);
+    await save({ date, slot, content, status: "success" });
+    logger.log(`[agent] Saved ${date} ${slot}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[agent] FAILED: ${message}`);
+    logger.error(`[agent] FAILED: ${message}`);
     try {
-      await saveDigest({
+      await save({
         date,
         slot,
         content: null,
         status: "error",
         error_msg: message,
       });
-      console.error(`[agent] Recorded error row for ${date} ${slot}`);
+      logger.error(`[agent] Recorded error row for ${date} ${slot}`);
     } catch (saveErr) {
-      console.error(
+      logger.error(
         `[agent] Could not record error row: ${saveErr instanceof Error ? saveErr.message : saveErr}`,
       );
     }
+    throw err;
+  }
+}
+
+async function main() {
+  try {
+    await runAgent({ slot: parseSlot() });
+  } catch {
     process.exit(1);
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

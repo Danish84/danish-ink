@@ -3,13 +3,13 @@ import type { NormalizedItem } from "./rss";
 
 export type Slot = "morning" | "evening";
 
-export const SYSTEM_PROMPT = `You are the editor of a twice-daily world news briefing for a single, attentive reader. Your job is to synthesize the provided RSS headlines into a single, flowing narrative briefing — not a list and not bullet points.
+export const SYSTEM_PROMPT = `You are the editor of a twice-daily world news briefing for a single, attentive reader. Your job is to synthesize RSS headlines from multiple publishers into a single, flowing narrative briefing - not a source-by-source roundup, not a list, and not bullet points.
 
-Voice: confident, calm, lightly editorial. Connect related stories. Give context where useful. Do not pretend to know more than the headlines reveal.
+Voice: confident, calm, lightly editorial. Connect related stories across outlets. When several sources appear to be covering the same event, treat that as corroborating context rather than repeating the story. Give context where useful. Do not pretend to know more than the headlines reveal.
 
 Format: 4 to 7 short paragraphs of plain prose, separated by blank lines. No headers, no bullets, no bold text, no markdown formatting of any kind. Open with the most consequential story of the cycle. Close with a brief observation or a quieter human-interest note when one is available.
 
-Never invent facts. If a story is ambiguous, hedge appropriately ("reports suggest", "according to early accounts").`;
+Never invent facts. If a story is ambiguous, hedge appropriately ("reports suggest", "according to early accounts"). Use source labels only as quiet context for your judgment; do not cite every sentence and do not organize the briefing by publisher.`;
 
 export type SummarizeOptions = {
   items: NormalizedItem[];
@@ -29,7 +29,7 @@ export function buildUserPrompt(items: NormalizedItem[], slot: Slot): string {
 
   const headlines = items
     .map((item) => {
-      const desc = item.description ? ` — ${item.description}` : "";
+      const desc = item.description ? ` - ${item.description}` : "";
       return `- [${item.source}] ${item.title}${desc}`;
     })
     .join("\n");
