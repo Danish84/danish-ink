@@ -13,7 +13,7 @@ Open <http://localhost:3000> in a browser.
 
 ## Deployed URL
 
-Not yet deployed. This README will be updated with the live URL once Vercel is wired up.
+<https://danish-ink.vercel.app/>
 
 ## Stack
 
