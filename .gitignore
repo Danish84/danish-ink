@@ -36,6 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code local settings
+.claude/
+
+# planning docs — kept local only, not published to the public repo
+/PRD.md
+/issues/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
