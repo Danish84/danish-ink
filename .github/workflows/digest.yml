@@ -1,0 +1,56 @@
+name: Digest agent
+
+on:
+  schedule:
+    # Morning: 12:00 UTC = 07:00 EST
+    - cron: "0 12 * * *"
+    # Evening: 23:00 UTC = 18:00 EST
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "Which slot to generate"
+        required: true
+        type: choice
+        default: morning
+        options:
+          - morning
+          - evening
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve slot
+        id: slot
+        run: |
+          if [ -n "${{ inputs.slot }}" ]; then
+            echo "value=${{ inputs.slot }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 12 * * *" ]; then
+            echo "value=morning" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=evening" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run agent (with 1 retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 8
+          max_attempts: 2
+          retry_wait_seconds: 30
+          command: npx tsx agent/index.ts --slot=${{ steps.slot.outputs.value }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
