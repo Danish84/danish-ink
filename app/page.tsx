@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { BriefingBody } from "@/components/briefing-body";
 import { DatePickerNav } from "@/components/date-picker-nav";
 import { RevealRoot } from "@/components/reveal-root";
+import { SiteFooter } from "@/components/site-footer";
+import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +21,29 @@ type Summary = {
   status: "success" | "error";
   error_msg: string | null;
   generated_at: string;
+};
+
+type ArcStatus = "proposed" | "active" | "closure_candidate" | "closed";
+
+type SummaryArcRow = {
+  paragraph_index: number;
+  day_number: number;
+  arcs:
+    | {
+        slug: string;
+        title: string;
+        status: ArcStatus;
+      }
+    | {
+        slug: string;
+        title: string;
+        status: ArcStatus;
+      }[]
+    | null;
+};
+
+type SummaryWithArcs = Summary & {
+  slot_arcs?: SummaryArcRow[] | null;
 };
 
 type HomeProps = {
@@ -66,10 +92,12 @@ export default async function Home({ searchParams }: HomeProps) {
   const { data } = targetDate
     ? await supabase
         .from("summaries")
-        .select("id, date, slot, content, status, error_msg, generated_at")
+        .select(
+          "id, date, slot, content, status, error_msg, generated_at, slot_arcs(paragraph_index, day_number, arcs(slug, title, status))",
+        )
         .eq("date", targetDate)
         .order("generated_at", { ascending: false })
-        .returns<Summary[]>()
+        .returns<SummaryWithArcs[]>()
     : { data: null };
 
   const isLatestView = !requestedDate;
@@ -87,12 +115,14 @@ export default async function Home({ searchParams }: HomeProps) {
           status: "error" as const,
           error_msg: "Development preview",
           generated_at: new Date().toISOString(),
+          slot_arcs: [],
         },
       ]
     : orderByLatestProcessed(rows);
 
   const displayDate = summaries[0]?.date ?? targetDate;
   const dateLabel = displayDate ? formatDate(displayDate) : null;
+  const pendingArcCount = await getPendingArcCount();
 
   return (
     <RevealRoot className="contents">
@@ -127,6 +157,11 @@ export default async function Home({ searchParams }: HomeProps) {
                 A twice-daily world briefing
               </p>
             )}
+            {pendingArcCount > 0 ? (
+              <Link className="pending-pill mt-3" href="/admin">
+                {pendingArcCount} arcs pending
+              </Link>
+            ) : null}
           </div>
         </header>
 
@@ -146,7 +181,7 @@ export default async function Home({ searchParams }: HomeProps) {
           )}
         </div>
 
-        <Colophon />
+        <SiteFooter className="reveal-body mt-12" />
       </main>
     </RevealRoot>
   );
@@ -156,7 +191,7 @@ function BriefingSection({
   summary,
   isFirst,
 }: {
-  summary: Summary;
+  summary: SummaryWithArcs;
   isFirst: boolean;
 }) {
   const mark = summary.slot === "morning" ? "☼" : "☾";
@@ -211,7 +246,10 @@ function BriefingSection({
       {summary.status === "error" ? (
         <p className="editors-note">This edition could not be issued.</p>
       ) : summary.content ? (
-        <BriefingBody content={summary.content} />
+        <BriefingBody
+          content={summary.content}
+          arcsByParagraph={buildArcsByParagraph(summary.slot_arcs)}
+        />
       ) : (
         <p className="editors-note">Awaiting press time.</p>
       )}
@@ -219,35 +257,49 @@ function BriefingSection({
   );
 }
 
-function Colophon() {
-  const year = new Date().getFullYear();
-  return (
-    <footer className="reveal-body mt-12 flex flex-col items-center gap-2 pt-8 text-center">
-      <p
-        className="font-sans text-[10px] uppercase"
-        style={{
-          color: "var(--muted)",
-          letterSpacing: "0.22em",
-        }}
-      >
-        Danish.ink · Twice Daily · {year}
-      </p>
-      <p
-        className="text-[14px] italic max-w-md"
-        style={{
-          color: "var(--muted)",
-          fontFamily: "var(--font-serif), Georgia, serif",
-          lineHeight: 1.55,
-        }}
-      >
-        Headlines from BBC, Reuters, AP, Al Jazeera, Times of India —
-        synthesized by Claude.
-      </p>
-    </footer>
-  );
+function buildArcsByParagraph(slotArcs?: SummaryArcRow[] | null) {
+  const arcsByParagraph = new Map<
+    number,
+    {
+      slug: string;
+      title: string;
+      dayNumber: number;
+      status: ArcStatus;
+    }
+  >();
+
+  for (const slotArc of slotArcs ?? []) {
+    const arc = Array.isArray(slotArc.arcs) ? slotArc.arcs[0] : slotArc.arcs;
+    if (!arc) continue;
+
+    arcsByParagraph.set(slotArc.paragraph_index, {
+      slug: arc.slug,
+      title: arc.title,
+      dayNumber: slotArc.day_number,
+      status: arc.status,
+    });
+  }
+
+  return arcsByParagraph;
 }
 
-function orderByLatestProcessed(summaries: Summary[]): Summary[] {
+async function getPendingArcCount() {
+  const supabase = createServiceClient();
+  const [proposed, closureCandidates] = await Promise.all([
+    supabase
+      .from("arcs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "proposed"),
+    supabase
+      .from("arcs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "closure_candidate"),
+  ]);
+
+  return (proposed.count ?? 0) + (closureCandidates.count ?? 0);
+}
+
+function orderByLatestProcessed<T extends Summary>(summaries: T[]): T[] {
   return [...summaries].sort((a, b) => {
     const generatedDiff =
       new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime();

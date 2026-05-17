@@ -41,6 +41,7 @@ yarn-error.log*
 
 # planning docs — kept local only, not published to the public repo
 /PRD.md
+/prd/
 /issues/
 /handoff.md
 

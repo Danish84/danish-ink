@@ -11,6 +11,11 @@ export type SaveDigestInput = {
   error_msg?: string | null;
 };
 
+export type SavedDigest = SaveDigestInput & {
+  id: string;
+  generated_at: string;
+};
+
 export function createServiceClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
@@ -25,8 +30,8 @@ export function createServiceClient(): SupabaseClient {
 export async function saveDigest(
   input: SaveDigestInput,
   client: SupabaseClient = createServiceClient(),
-): Promise<void> {
-  const { error } = await client.from("summaries").upsert(
+): Promise<SavedDigest> {
+  const { data, error } = await client.from("summaries").upsert(
     {
       date: input.date,
       slot: input.slot,
@@ -36,8 +41,10 @@ export async function saveDigest(
       generated_at: new Date().toISOString(),
     },
     { onConflict: "date,slot" },
-  );
+  ).select("id, date, slot, content, status, error_msg, generated_at")
+    .single();
   if (error) {
     throw new Error(`saveDigest: ${error.message}`);
   }
+  return data as SavedDigest;
 }

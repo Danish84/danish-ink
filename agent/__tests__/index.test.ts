@@ -26,7 +26,16 @@ describe("runAgent", () => {
   it("saves a success row when the pipeline completes", async () => {
     const fetchFeeds = vi.fn().mockResolvedValue(items);
     const summarizeDigest = vi.fn().mockResolvedValue("Generated digest.");
-    const save = vi.fn().mockResolvedValue(undefined);
+    const save = vi.fn().mockResolvedValue({
+      id: "summary-1",
+      date: "2026-05-16",
+      slot: "morning",
+      content: "Generated digest.",
+      status: "success",
+      generated_at: "2026-05-16T10:00:00Z",
+    });
+    const assignArcsAfterSave = vi.fn().mockResolvedValue(undefined);
+    const sweepArcClosures = vi.fn().mockResolvedValue(0);
 
     await runAgent({
       slot: "morning",
@@ -36,6 +45,8 @@ describe("runAgent", () => {
       fetchFeeds,
       summarizeDigest,
       save,
+      assignArcsAfterSave,
+      sweepArcClosures,
     });
 
     expect(fetchFeeds).toHaveBeenCalledWith(feeds);
@@ -49,6 +60,88 @@ describe("runAgent", () => {
       content: "Generated digest.",
       status: "success",
     });
+    expect(assignArcsAfterSave).toHaveBeenCalledWith({
+      id: "summary-1",
+      date: "2026-05-16",
+      slot: "morning",
+      content: "Generated digest.",
+    });
+    expect(sweepArcClosures).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a successful summary when arc assignment fails", async () => {
+    const logger = silentLogger();
+    const fetchFeeds = vi.fn().mockResolvedValue(items);
+    const summarizeDigest = vi.fn().mockResolvedValue("Generated digest.");
+    const save = vi.fn().mockResolvedValue({
+      id: "summary-1",
+      date: "2026-05-16",
+      slot: "morning",
+      content: "Generated digest.",
+      status: "success",
+      generated_at: "2026-05-16T10:00:00Z",
+    });
+    const assignArcsAfterSave = vi
+      .fn()
+      .mockRejectedValue(new Error("arc model timeout"));
+    const sweepArcClosures = vi.fn().mockResolvedValue(0);
+
+    await expect(
+      runAgent({
+        slot: "morning",
+        date: "2026-05-16",
+        feeds,
+        logger,
+        fetchFeeds,
+        summarizeDigest,
+        save,
+        assignArcsAfterSave,
+        sweepArcClosures,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(save).toHaveBeenCalledOnce();
+    expect(logger.error).toHaveBeenCalledWith(
+      "[agent] Arc assignment failed: arc model timeout",
+    );
+    expect(sweepArcClosures).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a successful summary when the closure sweep fails", async () => {
+    const logger = silentLogger();
+    const fetchFeeds = vi.fn().mockResolvedValue(items);
+    const summarizeDigest = vi.fn().mockResolvedValue("Generated digest.");
+    const save = vi.fn().mockResolvedValue({
+      id: "summary-1",
+      date: "2026-05-16",
+      slot: "morning",
+      content: "Generated digest.",
+      status: "success",
+      generated_at: "2026-05-16T10:00:00Z",
+    });
+    const assignArcsAfterSave = vi.fn().mockResolvedValue(undefined);
+    const sweepArcClosures = vi
+      .fn()
+      .mockRejectedValue(new Error("closure query failed"));
+
+    await expect(
+      runAgent({
+        slot: "morning",
+        date: "2026-05-16",
+        feeds,
+        logger,
+        fetchFeeds,
+        summarizeDigest,
+        save,
+        assignArcsAfterSave,
+        sweepArcClosures,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(save).toHaveBeenCalledOnce();
+    expect(logger.error).toHaveBeenCalledWith(
+      "[agent] Closure sweep failed: closure query failed",
+    );
   });
 
   it("records an error row when RSS fetching fails", async () => {
