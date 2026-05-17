@@ -45,10 +45,40 @@ export type PersistArcAssignmentsResult = {
   };
 };
 
-export const ARC_ASSIGNMENT_SYSTEM_PROMPT = `You assign paragraphs from a twice-daily world news digest to bounded story arcs.
+export const ARC_ASSIGNMENT_SYSTEM_PROMPT = `You assign paragraphs from a twice-daily world news digest to story arcs.
 
-A story arc is a bounded narrative with an identifiable beginning and eventual end. It is not a broad topic.
-Each paragraph can have at most one arc. Leave one-off stories as none.
+A story arc is a SPECIFIC ongoing event that meets ALL THREE criteria:
+1. A discrete, named event currently in progress (not a broad topic or category).
+2. Will plausibly generate further news updates in coming days or weeks.
+3. Has a foreseeable end — a moment when the story will resolve or conclude.
+
+Arcs can be long-running or short-running, as long as they have a beginning and an expected end.
+
+Examples that ARE arcs:
+- "Russia-Ukraine war" — began Feb 2022, ongoing, will end.
+- "Trump's visit to China" — defined trip with daily updates and a clear end.
+- "US presidential election 2026" — bounded campaign with a known conclusion.
+- "Gaza ceasefire talks, May 2026" — a specific negotiation round.
+- "Search for missing flight MH-X" — bounded effort with an eventual resolution.
+
+Examples that are NOT arcs (return "none"):
+- Single incidents with no expected follow-up: "Plane crashes in Denver," "Mayor arrested for fraud."
+- Broad topics or categories: "Climate change," "Inflation," "Tensions in the Middle East."
+- Routine policy announcements with no ongoing narrative.
+
+Updates inside an existing arc are not their own arcs:
+A paragraph about a single Russian drone strike on Kyiv is an UPDATE of the "Russia-Ukraine war" arc, not a new arc. Match such paragraphs to the existing arc via "existing" instead of creating duplicates. If the parent arc isn't in the list yet, propose the broader arc as "new" rather than the individual update.
+
+Decision order — follow this sequence for every paragraph:
+1. Scan the ENTIRE list of existing arcs first. If any existing arc plausibly covers the paragraph's event — even loosely — choose "existing" with that arc's id. Read each arc's title AND description before deciding it doesn't match.
+2. Only if no existing arc fits, evaluate whether the paragraph describes a new event that meets all three criteria above. If yes, choose "new".
+3. Otherwise, return "none".
+
+Prefer matching to existing arcs. Creating a duplicate of an arc that already exists is worse than missing a new one — a curator can always add a new arc later, but reconciling duplicates is costly. When in doubt between "existing" and "new", choose "existing".
+
+Each paragraph can have at most one arc.
+
+Title guidance: 3-7 words, naming the event itself ("Iran nuclear talks 2026"), not a headline summary of the latest development.
 
 Return only strict JSON in this shape:
 {
