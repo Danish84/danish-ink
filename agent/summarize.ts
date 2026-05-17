@@ -41,7 +41,7 @@ export async function summarize(opts: SummarizeOptions): Promise<string> {
   const client =
     opts.client ??
     new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const model = opts.model ?? "claude-sonnet-4-6";
+  const model = opts.model ?? "claude-haiku-4-5";
 
   if (opts.items.length === 0) {
     throw new Error("summarize: refusing to call Claude with zero items");
