@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+
+import { DatePickerNav } from "@/components/date-picker-nav";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,32 +18,51 @@ type Summary = {
 };
 
 type HomeProps = {
-  searchParams?: Promise<{ state?: string }>;
+  searchParams?: Promise<{ state?: string; date?: string }>;
 };
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const previewError =
     process.env.NODE_ENV === "development" && params?.state === "error";
+  const requestedDate =
+    params?.date && ISO_DATE.test(params.date) ? params.date : undefined;
 
   const supabase = await createClient();
-  const { data: latestSuccess } = await supabase
+
+  const { data: successDateRows } = await supabase
     .from("summaries")
     .select("date")
     .eq("status", "success")
     .order("date", { ascending: false })
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<Pick<Summary, "date">>();
+    .returns<Pick<Summary, "date">[]>();
 
-  const { data } = latestSuccess
+  const availableDates = Array.from(
+    new Set((successDateRows ?? []).map((r) => r.date)),
+  );
+  const latestDate = availableDates[0];
+
+  if (requestedDate && !availableDates.includes(requestedDate)) {
+    redirect("/");
+  }
+
+  const targetDate = requestedDate ?? latestDate;
+
+  const { data } = targetDate
     ? await supabase
         .from("summaries")
         .select("id, date, slot, content, status, error_msg, generated_at")
-        .eq("date", latestSuccess.date)
+        .eq("date", targetDate)
         .order("generated_at", { ascending: false })
         .returns<Summary[]>()
     : { data: null };
+
+  const isLatestView = !requestedDate;
+  const rows = (data ?? []).filter((row) =>
+    isLatestView ? hasReachedSlotWindow(row) : true,
+  );
 
   const summaries = previewError
     ? [
@@ -54,9 +76,9 @@ export default async function Home({ searchParams }: HomeProps) {
           generated_at: new Date().toISOString(),
         },
       ]
-    : orderByLatestProcessed((data ?? []).filter(hasReachedSlotWindow));
+    : orderByLatestProcessed(rows);
 
-  const displayDate = summaries[0]?.date ?? latestSuccess?.date;
+  const displayDate = summaries[0]?.date ?? targetDate;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-6 py-16">
@@ -73,6 +95,15 @@ export default async function Home({ searchParams }: HomeProps) {
             A twice-daily world briefing
           </p>
         )}
+        {availableDates.length > 0 && latestDate ? (
+          <div className="mt-2">
+            <DatePickerNav
+              selectedDate={displayDate ?? latestDate}
+              availableDates={availableDates}
+              latestDate={latestDate}
+            />
+          </div>
+        ) : null}
       </header>
 
       {summaries.length > 0 ? (
