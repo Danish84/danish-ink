@@ -2,8 +2,18 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { feedSourcesFromEnv } from "./feeds";
 import { fetchAllFeeds, type FeedSource, type NormalizedItem } from "./rss";
-import { saveDigest, type SaveDigestInput } from "./persistence";
+import {
+  createServiceClient,
+  saveDigest,
+  type SaveDigestInput,
+  type SavedDigest,
+} from "./persistence";
 import { summarize, type Slot } from "./summarize";
+import {
+  assignSavedSummaryArcs,
+  sweepClosureCandidates,
+  type SavedSummaryForArcs,
+} from "./arcs";
 
 type Logger = Pick<typeof console, "log" | "error">;
 
@@ -15,7 +25,9 @@ export type RunAgentOptions = {
   loadFeeds?: () => FeedSource[];
   fetchFeeds?: (sources: FeedSource[]) => Promise<NormalizedItem[]>;
   summarizeDigest?: typeof summarize;
-  save?: (input: SaveDigestInput) => Promise<void>;
+  save?: (input: SaveDigestInput) => Promise<SavedDigest | void>;
+  assignArcsAfterSave?: (summary: SavedSummaryForArcs) => Promise<void>;
+  sweepArcClosures?: () => Promise<number>;
 };
 
 function parseSlot(): Slot {
@@ -43,6 +55,13 @@ export async function runAgent({
   fetchFeeds = fetchAllFeeds,
   summarizeDigest = summarize,
   save = saveDigest,
+  assignArcsAfterSave = async (summary) => {
+    await assignSavedSummaryArcs({
+      summary,
+      client: createServiceClient(),
+    });
+  },
+  sweepArcClosures = async () => sweepClosureCandidates(createServiceClient()),
 }: RunAgentOptions): Promise<void> {
   logger.log(`[agent] Generating ${slot} digest for ${date}`);
 
@@ -59,8 +78,43 @@ export async function runAgent({
     const content = await summarizeDigest({ items, slot });
     logger.log(`[agent] Generated digest (${content.length} chars)`);
 
-    await save({ date, slot, content, status: "success" });
+    const saved = await save({ date, slot, content, status: "success" });
     logger.log(`[agent] Saved ${date} ${slot}`);
+
+    if (saved?.id) {
+      try {
+        await assignArcsAfterSave({
+          id: saved.id,
+          date: saved.date,
+          slot: saved.slot,
+          content: saved.content,
+        });
+        logger.log(`[agent] Assigned story arcs for ${date} ${slot}`);
+      } catch (arcErr) {
+        logger.error(
+          `[agent] Arc assignment failed: ${
+            arcErr instanceof Error ? arcErr.message : arcErr
+          }`,
+        );
+      }
+    }
+
+    try {
+      const closureCandidates = await sweepArcClosures();
+      if (closureCandidates > 0) {
+        logger.log(
+          `[agent] Flagged ${closureCandidates} arc${
+            closureCandidates === 1 ? "" : "s"
+          } for closure`,
+        );
+      }
+    } catch (closureErr) {
+      logger.error(
+        `[agent] Closure sweep failed: ${
+          closureErr instanceof Error ? closureErr.message : closureErr
+        }`,
+      );
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[agent] FAILED: ${message}`);
