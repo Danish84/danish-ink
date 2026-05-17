@@ -45,6 +45,9 @@ yarn-error.log*
 /issues/
 /handoff.md
 
+# one-shot / scratch scripts — kept local only
+/temp-scripts/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
