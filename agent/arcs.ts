@@ -111,7 +111,7 @@ export function parseArcAssignmentResponse(
 ): ArcDecision[] {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripMarkdownFence(text));
   } catch {
     return [];
   }
@@ -425,6 +425,14 @@ export function slugify(title: string): string {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+// Haiku occasionally wraps strict-JSON output in a ```json ... ``` fence.
+// JSON.parse rejects the backticks, so strip a leading + trailing fence if present.
+export function stripMarkdownFence(text: string): string {
+  const trimmed = text.trim();
+  const fenceMatch = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/.exec(trimmed);
+  return fenceMatch ? fenceMatch[1].trim() : trimmed;
 }
 
 async function insertSlotArc(

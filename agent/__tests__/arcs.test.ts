@@ -76,6 +76,44 @@ describe("parseArcAssignmentResponse", () => {
     expect(parseArcAssignmentResponse('{"wrong": true}', arcs)).toEqual([]);
   });
 
+  it("strips a ```json ... ``` markdown fence the model sometimes wraps around its output", () => {
+    const fenced =
+      "```json\n" +
+      JSON.stringify({
+        assignments: [
+          { paragraph_index: 0, type: "none" },
+          {
+            paragraph_index: 1,
+            type: "new",
+            proposed_title: "Test arc",
+            proposed_description: "A test description.",
+          },
+        ],
+      }) +
+      "\n```";
+
+    expect(parseArcAssignmentResponse(fenced, arcs)).toEqual([
+      { paragraph_index: 0, type: "none" },
+      {
+        paragraph_index: 1,
+        type: "new",
+        proposed_title: "Test arc",
+        proposed_description: "A test description.",
+      },
+    ]);
+  });
+
+  it("strips a bare ``` ... ``` fence as well", () => {
+    const fenced =
+      "```\n" +
+      JSON.stringify({ assignments: [{ paragraph_index: 0, type: "none" }] }) +
+      "\n```";
+
+    expect(parseArcAssignmentResponse(fenced, arcs)).toEqual([
+      { paragraph_index: 0, type: "none" },
+    ]);
+  });
+
   it("downgrades invalid existing arc ids to new proposals", () => {
     const decisions = parseArcAssignmentResponse(
       JSON.stringify({
