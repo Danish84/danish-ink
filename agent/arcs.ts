@@ -36,6 +36,8 @@ export type ArcDecision =
   | { paragraph_index: number; type: "none" };
 
 export type PersistArcAssignmentsResult = {
+  decisions: number;
+  none: number;
   created: number;
   matched: {
     proposed: number;
@@ -142,8 +144,12 @@ export function parseArcAssignmentResponse(
   let parsed: unknown;
   try {
     parsed = JSON.parse(stripMarkdownFence(text));
-  } catch {
-    return [];
+  } catch (error) {
+    throw new Error(
+      `parseArcAssignmentResponse: invalid JSON: ${
+        error instanceof Error ? error.message : error
+      }`,
+    );
   }
 
   const rawAssignments = Array.isArray(parsed)
@@ -153,7 +159,13 @@ export function parseArcAssignmentResponse(
         "assignments" in parsed &&
         Array.isArray((parsed as { assignments: unknown }).assignments)
       ? (parsed as { assignments: unknown[] }).assignments
-      : [];
+      : null;
+
+  if (!rawAssignments) {
+    throw new Error(
+      'parseArcAssignmentResponse: expected an "assignments" array',
+    );
+  }
 
   const validArcIds = new Set(arcs.map((arc) => arc.id));
   const decisions: ArcDecision[] = [];
@@ -254,9 +266,13 @@ export async function assignArcs({
 
   const block = message.content[0];
   if (!block || block.type !== "text") {
-    return [];
+    throw new Error("assignArcs: model returned no text block");
   }
-  return parseArcAssignmentResponse(block.text, arcs);
+  const decisions = parseArcAssignmentResponse(block.text, arcs);
+  if (decisions.length === 0) {
+    throw new Error("assignArcs: model returned zero assignment decisions");
+  }
+  return decisions;
 }
 
 export async function loadArcsForAssignment(
@@ -323,11 +339,15 @@ export async function persistArcAssignments({
   arcs: ArcForAssignment[];
 }): Promise<PersistArcAssignmentsResult> {
   const result = emptyPersistResult();
+  result.decisions = decisions.length;
   const arcsById = new Map(arcs.map((arc) => [arc.id, arc]));
   const dayNumberCache = new Map<string, number>();
 
   for (const decision of decisions) {
-    if (decision.type === "none") continue;
+    if (decision.type === "none") {
+      result.none += 1;
+      continue;
+    }
 
     if (decision.type === "new") {
       const arc = await createProposedArc(client, {
@@ -488,6 +508,8 @@ async function insertSlotArc(
 
 function emptyPersistResult(): PersistArcAssignmentsResult {
   return {
+    decisions: 0,
+    none: 0,
     created: 0,
     matched: {
       proposed: 0,

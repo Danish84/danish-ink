@@ -24,6 +24,7 @@ function silentLogger() {
 
 describe("runAgent", () => {
   it("saves a success row when the pipeline completes", async () => {
+    const logger = silentLogger();
     const fetchFeeds = vi.fn().mockResolvedValue(items);
     const summarizeDigest = vi.fn().mockResolvedValue("Generated digest.");
     const save = vi.fn().mockResolvedValue({
@@ -34,14 +35,24 @@ describe("runAgent", () => {
       status: "success",
       generated_at: "2026-05-16T10:00:00Z",
     });
-    const assignArcsAfterSave = vi.fn().mockResolvedValue(undefined);
+    const assignArcsAfterSave = vi.fn().mockResolvedValue({
+      decisions: 2,
+      none: 1,
+      created: 0,
+      matched: {
+        proposed: 0,
+        active: 1,
+        closure_candidate: 0,
+        closed: 0,
+      },
+    });
     const sweepArcClosures = vi.fn().mockResolvedValue(0);
 
     await runAgent({
       slot: "morning",
       date: "2026-05-16",
       feeds,
-      logger: silentLogger(),
+      logger,
       fetchFeeds,
       summarizeDigest,
       save,
@@ -66,7 +77,55 @@ describe("runAgent", () => {
       slot: "morning",
       content: "Generated digest.",
     });
+    expect(logger.log).toHaveBeenCalledWith(
+      "[agent] Assigned story arcs for 2026-05-16 morning: decisions=2, matched=1, created=0, none=1",
+    );
     expect(sweepArcClosures).toHaveBeenCalledOnce();
+  });
+
+  it("warns when arc assignment succeeds but persists no arcs", async () => {
+    const logger = silentLogger();
+    const fetchFeeds = vi.fn().mockResolvedValue(items);
+    const summarizeDigest = vi.fn().mockResolvedValue("Generated digest.");
+    const save = vi.fn().mockResolvedValue({
+      id: "summary-1",
+      date: "2026-05-16",
+      slot: "evening",
+      content: "Generated digest.",
+      status: "success",
+      generated_at: "2026-05-16T10:00:00Z",
+    });
+    const assignArcsAfterSave = vi.fn().mockResolvedValue({
+      decisions: 4,
+      none: 4,
+      created: 0,
+      matched: {
+        proposed: 0,
+        active: 0,
+        closure_candidate: 0,
+        closed: 0,
+      },
+    });
+    const sweepArcClosures = vi.fn().mockResolvedValue(0);
+
+    await runAgent({
+      slot: "evening",
+      date: "2026-05-16",
+      feeds,
+      logger,
+      fetchFeeds,
+      summarizeDigest,
+      save,
+      assignArcsAfterSave,
+      sweepArcClosures,
+    });
+
+    expect(logger.log).toHaveBeenCalledWith(
+      "[agent] Assigned story arcs for 2026-05-16 evening: decisions=4, matched=0, created=0, none=4",
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      "[agent] Arc assignment produced no persisted arcs for 2026-05-16 evening",
+    );
   });
 
   it("keeps a successful summary when arc assignment fails", async () => {

@@ -71,9 +71,13 @@ describe("parseArcAssignmentResponse", () => {
     ]);
   });
 
-  it("returns an empty assignment set for malformed output", () => {
-    expect(parseArcAssignmentResponse("not json", arcs)).toEqual([]);
-    expect(parseArcAssignmentResponse('{"wrong": true}', arcs)).toEqual([]);
+  it("throws for malformed or unexpected output", () => {
+    expect(() => parseArcAssignmentResponse("not json", arcs)).toThrow(
+      "invalid JSON",
+    );
+    expect(() => parseArcAssignmentResponse('{"wrong": true}', arcs)).toThrow(
+      'expected an "assignments" array',
+    );
   });
 
   it("strips a ```json ... ``` markdown fence the model sometimes wraps around its output", () => {
@@ -251,6 +255,8 @@ describe("persistArcAssignments", () => {
     });
 
     expect(result.created).toBe(1);
+    expect(result.decisions).toBe(1);
+    expect(result.none).toBe(0);
     expect(calls).toContainEqual(
       expect.objectContaining({
         table: "slot_arcs",
@@ -299,6 +305,7 @@ describe("persistArcAssignments", () => {
     });
 
     expect(result.matched.proposed).toBe(2);
+    expect(result.decisions).toBe(2);
     expect(
       calls.filter(
         (call) =>

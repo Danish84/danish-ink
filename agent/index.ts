@@ -12,6 +12,7 @@ import { summarize, type Slot } from "./summarize";
 import {
   assignSavedSummaryArcs,
   sweepClosureCandidates,
+  type PersistArcAssignmentsResult,
   type SavedSummaryForArcs,
 } from "./arcs";
 
@@ -26,7 +27,9 @@ export type RunAgentOptions = {
   fetchFeeds?: (sources: FeedSource[]) => Promise<NormalizedItem[]>;
   summarizeDigest?: typeof summarize;
   save?: (input: SaveDigestInput) => Promise<SavedDigest | void>;
-  assignArcsAfterSave?: (summary: SavedSummaryForArcs) => Promise<void>;
+  assignArcsAfterSave?: (
+    summary: SavedSummaryForArcs,
+  ) => Promise<PersistArcAssignmentsResult | void>;
   sweepArcClosures?: () => Promise<number>;
 };
 
@@ -56,7 +59,7 @@ export async function runAgent({
   summarizeDigest = summarize,
   save = saveDigest,
   assignArcsAfterSave = async (summary) => {
-    await assignSavedSummaryArcs({
+    return assignSavedSummaryArcs({
       summary,
       client: createServiceClient(),
     });
@@ -83,13 +86,29 @@ export async function runAgent({
 
     if (saved?.id) {
       try {
-        await assignArcsAfterSave({
+        const arcResult = await assignArcsAfterSave({
           id: saved.id,
           date: saved.date,
           slot: saved.slot,
           content: saved.content,
         });
-        logger.log(`[agent] Assigned story arcs for ${date} ${slot}`);
+        if (arcResult) {
+          const matched =
+            arcResult.matched.proposed +
+            arcResult.matched.active +
+            arcResult.matched.closure_candidate +
+            arcResult.matched.closed;
+          logger.log(
+            `[agent] Assigned story arcs for ${date} ${slot}: decisions=${arcResult.decisions}, matched=${matched}, created=${arcResult.created}, none=${arcResult.none}`,
+          );
+          if (matched === 0 && arcResult.created === 0) {
+            logger.error(
+              `[agent] Arc assignment produced no persisted arcs for ${date} ${slot}`,
+            );
+          }
+        } else {
+          logger.log(`[agent] Assigned story arcs for ${date} ${slot}`);
+        }
       } catch (arcErr) {
         logger.error(
           `[agent] Arc assignment failed: ${
