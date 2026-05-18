@@ -51,6 +51,7 @@ describe("runAgent", () => {
     await runAgent({
       slot: "morning",
       date: "2026-05-16",
+      force: true,
       feeds,
       logger,
       fetchFeeds,
@@ -83,6 +84,82 @@ describe("runAgent", () => {
     expect(sweepArcClosures).toHaveBeenCalledOnce();
   });
 
+  it("skips generation when a successful digest already exists", async () => {
+    const logger = silentLogger();
+    const checkExistingSuccess = vi.fn().mockResolvedValue(true);
+    const fetchFeeds = vi.fn();
+    const summarizeDigest = vi.fn();
+    const save = vi.fn();
+    const assignArcsAfterSave = vi.fn();
+    const sweepArcClosures = vi.fn();
+
+    await runAgent({
+      slot: "morning",
+      date: "2026-05-16",
+      feeds,
+      logger,
+      checkExistingSuccess,
+      fetchFeeds,
+      summarizeDigest,
+      save,
+      assignArcsAfterSave,
+      sweepArcClosures,
+    });
+
+    expect(checkExistingSuccess).toHaveBeenCalledWith({
+      date: "2026-05-16",
+      slot: "morning",
+    });
+    expect(fetchFeeds).not.toHaveBeenCalled();
+    expect(summarizeDigest).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(assignArcsAfterSave).not.toHaveBeenCalled();
+    expect(sweepArcClosures).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      "[agent] Skipping 2026-05-16 morning: successful digest already exists",
+    );
+  });
+
+  it("regenerates an existing successful digest when force is enabled", async () => {
+    const logger = silentLogger();
+    const checkExistingSuccess = vi.fn();
+    const fetchFeeds = vi.fn().mockResolvedValue(items);
+    const summarizeDigest = vi.fn().mockResolvedValue("Generated digest.");
+    const save = vi.fn().mockResolvedValue({
+      id: "summary-1",
+      date: "2026-05-16",
+      slot: "morning",
+      content: "Generated digest.",
+      status: "success",
+      generated_at: "2026-05-16T10:00:00Z",
+    });
+    const assignArcsAfterSave = vi.fn().mockResolvedValue(undefined);
+    const sweepArcClosures = vi.fn().mockResolvedValue(0);
+
+    await runAgent({
+      slot: "morning",
+      date: "2026-05-16",
+      force: true,
+      feeds,
+      logger,
+      checkExistingSuccess,
+      fetchFeeds,
+      summarizeDigest,
+      save,
+      assignArcsAfterSave,
+      sweepArcClosures,
+    });
+
+    expect(checkExistingSuccess).not.toHaveBeenCalled();
+    expect(fetchFeeds).toHaveBeenCalledWith(feeds);
+    expect(save).toHaveBeenCalledWith({
+      date: "2026-05-16",
+      slot: "morning",
+      content: "Generated digest.",
+      status: "success",
+    });
+  });
+
   it("warns when arc assignment succeeds but persists no arcs", async () => {
     const logger = silentLogger();
     const fetchFeeds = vi.fn().mockResolvedValue(items);
@@ -111,6 +188,7 @@ describe("runAgent", () => {
     await runAgent({
       slot: "evening",
       date: "2026-05-16",
+      force: true,
       feeds,
       logger,
       fetchFeeds,
@@ -149,6 +227,7 @@ describe("runAgent", () => {
       runAgent({
         slot: "morning",
         date: "2026-05-16",
+        force: true,
         feeds,
         logger,
         fetchFeeds,
@@ -187,6 +266,7 @@ describe("runAgent", () => {
       runAgent({
         slot: "morning",
         date: "2026-05-16",
+        force: true,
         feeds,
         logger,
         fetchFeeds,
@@ -212,6 +292,7 @@ describe("runAgent", () => {
       runAgent({
         slot: "evening",
         date: "2026-05-16",
+        force: true,
         feeds,
         logger: silentLogger(),
         fetchFeeds,
@@ -241,6 +322,7 @@ describe("runAgent", () => {
       runAgent({
         slot: "morning",
         date: "2026-05-16",
+        force: true,
         feeds,
         logger: silentLogger(),
         fetchFeeds,
@@ -267,6 +349,7 @@ describe("runAgent", () => {
       runAgent({
         slot: "morning",
         date: "2026-05-16",
+        force: true,
         feeds,
         logger: silentLogger(),
         fetchFeeds,
@@ -297,6 +380,7 @@ describe("runAgent", () => {
       runAgent({
         slot: "evening",
         date: "2026-05-16",
+        force: true,
         feeds,
         logger: silentLogger(),
         fetchFeeds,

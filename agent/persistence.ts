@@ -48,3 +48,21 @@ export async function saveDigest(
   }
   return data as SavedDigest;
 }
+
+export async function hasSuccessfulDigest(
+  input: Pick<SaveDigestInput, "date" | "slot">,
+  client: SupabaseClient = createServiceClient(),
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("summaries")
+    .select("id")
+    .eq("date", input.date)
+    .eq("slot", input.slot)
+    .eq("status", "success")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`hasSuccessfulDigest: ${error.message}`);
+  }
+  return Boolean(data);
+}

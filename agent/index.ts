@@ -4,6 +4,7 @@ import { feedSourcesFromEnv } from "./feeds";
 import { fetchAllFeeds, type FeedSource, type NormalizedItem } from "./rss";
 import {
   createServiceClient,
+  hasSuccessfulDigest,
   saveDigest,
   type SaveDigestInput,
   type SavedDigest,
@@ -21,28 +22,35 @@ type Logger = Pick<typeof console, "log" | "error">;
 export type RunAgentOptions = {
   slot: Slot;
   date?: string;
+  force?: boolean;
   feeds?: FeedSource[];
   logger?: Logger;
   loadFeeds?: () => FeedSource[];
   fetchFeeds?: (sources: FeedSource[]) => Promise<NormalizedItem[]>;
   summarizeDigest?: typeof summarize;
   save?: (input: SaveDigestInput) => Promise<SavedDigest | void>;
+  checkExistingSuccess?: (
+    input: Pick<SaveDigestInput, "date" | "slot">,
+  ) => Promise<boolean>;
   assignArcsAfterSave?: (
     summary: SavedSummaryForArcs,
   ) => Promise<PersistArcAssignmentsResult | void>;
   sweepArcClosures?: () => Promise<number>;
 };
 
-function parseSlot(): Slot {
+function parseCliOptions(): { slot: Slot; force: boolean } {
   const { values } = parseArgs({
     args: process.argv.slice(2),
-    options: { slot: { type: "string" } },
+    options: {
+      force: { type: "boolean", default: false },
+      slot: { type: "string" },
+    },
     strict: false,
   });
   if (values.slot !== "morning" && values.slot !== "evening") {
     throw new Error("Pass --slot=morning or --slot=evening");
   }
-  return values.slot;
+  return { slot: values.slot, force: Boolean(values.force) };
 }
 
 function todayDateString(): string {
@@ -52,12 +60,14 @@ function todayDateString(): string {
 export async function runAgent({
   slot,
   date = todayDateString(),
+  force = false,
   feeds,
   logger = console,
   loadFeeds = feedSourcesFromEnv,
   fetchFeeds = fetchAllFeeds,
   summarizeDigest = summarize,
   save = saveDigest,
+  checkExistingSuccess = hasSuccessfulDigest,
   assignArcsAfterSave = async (summary) => {
     return assignSavedSummaryArcs({
       summary,
@@ -69,6 +79,13 @@ export async function runAgent({
   logger.log(`[agent] Generating ${slot} digest for ${date}`);
 
   try {
+    if (!force && (await checkExistingSuccess({ date, slot }))) {
+      logger.log(
+        `[agent] Skipping ${date} ${slot}: successful digest already exists`,
+      );
+      return;
+    }
+
     const sources = feeds ?? loadFeeds();
     logger.log(`[agent] Fetching ${sources.length} feeds`);
 
@@ -157,7 +174,7 @@ export async function runAgent({
 
 async function main() {
   try {
-    await runAgent({ slot: parseSlot() });
+    await runAgent(parseCliOptions());
   } catch {
     process.exit(1);
   }

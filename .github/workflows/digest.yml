@@ -16,6 +16,11 @@ on:
         options:
           - morning
           - evening
+      force:
+        description: "Regenerate even if this slot already has a successful digest"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   generate:
@@ -43,13 +48,22 @@ jobs:
             echo "value=evening" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Resolve force flag
+        id: force
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "value=--force" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run agent (with 1 retry)
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 8
           max_attempts: 2
           retry_wait_seconds: 30
-          command: npx tsx agent/index.ts --slot=${{ steps.slot.outputs.value }}
+          command: npx tsx agent/index.ts --slot=${{ steps.slot.outputs.value }} ${{ steps.force.outputs.value }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
