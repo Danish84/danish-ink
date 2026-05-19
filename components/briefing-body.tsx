@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { ArcMarker } from "@/components/arc-marker";
 import { splitDigestParagraphs } from "@/lib/paragraphs";
 
 type ArcMarker = {
@@ -38,9 +37,12 @@ export function BriefingBody({ content, arcsByParagraph }: Props) {
             {shouldRenderMarker ? (
               <>
                 {" "}
-                <Link className="arc-marker" href={`/arc/${arc.slug}`}>
-                  &mdash; {arc.title}, day {arc.dayNumber}
-                </Link>
+                <ArcMarker
+                  slug={arc.slug}
+                  title={arc.title}
+                  dayNumber={arc.dayNumber}
+                  status={arc.status}
+                />
               </>
             ) : null}
           </p>

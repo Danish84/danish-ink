@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { SiteFooter } from "@/components/site-footer";
 import { aggregateArcCounts, type ArcStatus } from "@/lib/arc-metrics";
@@ -144,9 +143,9 @@ function ArcSection({
         <ol className="mt-5">
           {arcs.map((arc) => (
             <li key={arc.slug} className="arc-index-entry">
-              <Link className="arc-index-title" href={`/arc/${arc.slug}`}>
+              <a className="arc-index-title" href={`/arc/${arc.slug}`}>
                 {arc.title}
-              </Link>
+              </a>
               <p className="editorial-meta mt-2">
                 {formatCount(arc.dayCount, "day")} &middot;{" "}
                 {formatCount(arc.mentionCount, "mention")} &middot;{" "}
