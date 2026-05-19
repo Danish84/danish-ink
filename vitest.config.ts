@@ -12,6 +12,7 @@ export default defineConfig({
     // Component tests opt into jsdom via the per-file
     // `// @vitest-environment jsdom` directive.
     environment: "node",
+    exclude: ["tests/e2e/**", "node_modules/**"],
     globals: false,
   },
 });
