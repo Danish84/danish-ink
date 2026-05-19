@@ -13,16 +13,6 @@ type Props = {
 };
 
 const PANEL_BREAKPOINT = "(min-width: 1280px)";
-const PANEL_MIN_TOP = 84;
-
-function setPanelStart(anchor: HTMLAnchorElement) {
-  const markerTop = anchor.getBoundingClientRect().top + window.scrollY;
-  const panelTop = Math.max(markerTop, PANEL_MIN_TOP);
-  document.documentElement.style.setProperty(
-    "--arc-panel-start-y",
-    `${panelTop}px`,
-  );
-}
 
 export function ArcMarker({ slug, title, dayNumber }: Props) {
   const router = useRouter();
@@ -61,7 +51,6 @@ export function ArcMarker({ slug, title, dayNumber }: Props) {
     }
 
     event.preventDefault();
-    setPanelStart(event.currentTarget);
 
     if (isActive) {
       // Toggle: clicking the active marker closes the panel.

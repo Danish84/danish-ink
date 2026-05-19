@@ -684,7 +684,7 @@
 
     display: block;
     position: absolute;
-    top: var(--arc-panel-start-y, var(--panel-start-y));
+    top: var(--panel-start-y);
     bottom: 0;
     left: calc(
       50% - var(--briefing-shift) + var(--briefing-w) / 2 + var(--panel-gap)
