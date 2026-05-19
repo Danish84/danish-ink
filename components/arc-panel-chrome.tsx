@@ -11,17 +11,24 @@ type Props = {
 const EXIT_DURATION_MS = 220;
 const PANEL_VIEWPORT_TOP = 48;
 
-function getPanelTop() {
+function getPanelTop(slug: string | null) {
+  const markerHref = slug ? `/arc/${slug}` : null;
   const activeMarker = document.querySelector<HTMLAnchorElement>(
     ".arc-marker[data-active='true']",
   );
-  const activeSection = activeMarker?.closest("section");
+  const slugMarker = markerHref
+    ? Array.from(document.querySelectorAll<HTMLAnchorElement>(".arc-marker")).find(
+        (marker) => marker.getAttribute("href") === markerHref,
+      )
+    : null;
+  const activeSection = (activeMarker ?? slugMarker)?.closest("section");
   const activeHeading = activeSection?.querySelector("h2");
   const firstHeading = document.querySelector("main section h2");
-  const headingTop =
-    (activeHeading ?? firstHeading)?.getBoundingClientRect().top ??
-    PANEL_VIEWPORT_TOP;
+  const heading = activeHeading ?? firstHeading;
 
+  if (!heading) return null;
+
+  const headingTop = heading.getBoundingClientRect().top;
   return Math.max(PANEL_VIEWPORT_TOP, Math.round(headingTop));
 }
 
@@ -69,19 +76,28 @@ export function ArcPanelChrome({ children, slug }: Props) {
     const updatePanelTop = () => {
       if (frame) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
+        const panelTop = getPanelTop(slug);
+        if (panelTop === null) {
+          document.documentElement.style.removeProperty(
+            "--arc-panel-viewport-top",
+          );
+          return;
+        }
         document.documentElement.style.setProperty(
           "--arc-panel-viewport-top",
-          `${getPanelTop()}px`,
+          `${panelTop}px`,
         );
       });
     };
 
     updatePanelTop();
+    const delayedUpdate = window.setTimeout(updatePanelTop, 100);
     window.addEventListener("scroll", updatePanelTop, { passive: true });
     window.addEventListener("resize", updatePanelTop);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
+      window.clearTimeout(delayedUpdate);
       window.removeEventListener("scroll", updatePanelTop);
       window.removeEventListener("resize", updatePanelTop);
       document.documentElement.style.removeProperty(
