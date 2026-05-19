@@ -680,16 +680,21 @@
     --briefing-shift: 220px;
     --panel-w: 380px;
     --panel-gap: 28px;
+    --panel-start-y: 15.875rem;
 
     display: block;
     position: absolute;
-    top: 0;
+    top: var(--panel-start-y);
     bottom: 0;
     left: calc(
       50% - var(--briefing-shift) + var(--briefing-w) / 2 + var(--panel-gap)
     );
     width: var(--panel-w);
     pointer-events: none;
+  }
+
+  body:has(.pending-pill) .arc-panel-wrap {
+    --panel-start-y: 17.5rem;
   }
 
   .arc-panel {
