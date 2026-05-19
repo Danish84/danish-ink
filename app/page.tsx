@@ -126,7 +126,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <RevealRoot className="contents">
-      <main className="briefing-shift mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-6 py-10 sm:py-16">
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-10 sm:py-16">
         <header className="relative z-50 flex flex-col">
           <h1 className="reveal-wordmark text-ink font-medium tracking-tight lowercase text-[48px] leading-[1.05] sm:text-[72px]">
             danish.ink
@@ -165,7 +165,7 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
         </header>
 
-        <div className="reveal-body flex flex-col">
+        <main className="briefing-shift reveal-body mt-12 flex flex-col">
           {summaries.length > 0 ? (
             <div className="flex flex-col gap-12">
               {summaries.map((summary, index) => (
@@ -179,10 +179,10 @@ export default async function Home({ searchParams }: HomeProps) {
           ) : (
             <p className="editors-note">The first edition is still being set.</p>
           )}
-        </div>
+        </main>
 
-        <SiteFooter className="reveal-body mt-12" />
-      </main>
+        <SiteFooter className="reveal-body mt-24" />
+      </div>
     </RevealRoot>
   );
 }
