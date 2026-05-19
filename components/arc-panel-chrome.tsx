@@ -12,24 +12,11 @@ const EXIT_DURATION_MS = 220;
 const PANEL_VIEWPORT_TOP = 48;
 const PANEL_RETURN_KEY = "danish.ink.arcPanelReturnTo";
 
-function getPanelTop(slug: string | null) {
-  const markerHref = slug ? `/arc/${slug}` : null;
-  const activeMarker = document.querySelector<HTMLAnchorElement>(
-    ".arc-marker[data-active='true']",
-  );
-  const slugMarker = markerHref
-    ? Array.from(document.querySelectorAll<HTMLAnchorElement>(".arc-marker")).find(
-        (marker) => marker.getAttribute("href") === markerHref,
-      )
-    : null;
-  const activeSection = (activeMarker ?? slugMarker)?.closest("section");
-  const activeHeading = activeSection?.querySelector("h2");
+function getPanelTop() {
   const firstHeading = document.querySelector("main section h2");
-  const heading = activeHeading ?? firstHeading;
+  if (!firstHeading) return null;
 
-  if (!heading) return null;
-
-  const headingTop = heading.getBoundingClientRect().top;
+  const headingTop = firstHeading.getBoundingClientRect().top;
   return Math.max(PANEL_VIEWPORT_TOP, Math.round(headingTop));
 }
 
@@ -82,7 +69,7 @@ export function ArcPanelChrome({ children, slug }: Props) {
     const updatePanelTop = () => {
       if (frame) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const panelTop = getPanelTop(slug);
+        const panelTop = getPanelTop();
         if (panelTop === null) {
           document.documentElement.style.removeProperty(
             "--arc-panel-viewport-top",
