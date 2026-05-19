@@ -2,43 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { SiteFooter } from "@/components/site-footer";
-import { splitDigestParagraphs } from "@/lib/paragraphs";
+import { loadArc, type ArcStatus } from "@/lib/arcs/load-arc";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-type Slot = "morning" | "evening";
-type ArcStatus = "active" | "closure_candidate" | "closed";
-
-type Arc = {
-  id: string;
-  slug: string;
-  title: string;
-  status: ArcStatus;
-  opened_at: string;
-  closed_at: string | null;
-};
-
-type Assignment = {
-  paragraph_index: number;
-  day_number: number;
-  summaries:
-    | {
-        date: string;
-        slot: Slot;
-        content: string | null;
-        generated_at: string;
-        status: "success" | "error";
-      }
-    | {
-        date: string;
-        slot: Slot;
-        content: string | null;
-        generated_at: string;
-        status: "success" | "error";
-      }[]
-    | null;
-};
 
 type ArcPageProps = {
   params: Promise<{ slug: string }>;
@@ -62,52 +29,11 @@ export async function generateMetadata({
 
 export default async function ArcPage({ params }: ArcPageProps) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const result = await loadArc({ slug });
 
-  const { data: arc } = await supabase
-    .from("arcs")
-    .select("id, slug, title, status, opened_at, closed_at")
-    .eq("slug", slug)
-    .maybeSingle<Arc>();
+  if (!result) notFound();
 
-  if (!arc) notFound();
-
-  const { data: assignmentRows } = await supabase
-    .from("slot_arcs")
-    .select(
-      "paragraph_index, day_number, summaries(date, slot, content, generated_at, status)",
-    )
-    .eq("arc_id", arc.id)
-    .returns<Assignment[]>();
-
-  const entries = (assignmentRows ?? [])
-    .map((assignment) => {
-      const summary = Array.isArray(assignment.summaries)
-        ? assignment.summaries[0]
-        : assignment.summaries;
-      if (!summary?.content || summary.status !== "success") return null;
-
-      const paragraph = splitDigestParagraphs(summary.content)[
-        assignment.paragraph_index
-      ];
-      if (!paragraph) return null;
-
-      return {
-        paragraph,
-        date: summary.date,
-        slot: summary.slot,
-        generatedAt: summary.generated_at,
-        dayNumber: assignment.day_number,
-      };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
-    .sort((a, b) => {
-      const generatedDiff =
-        new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime();
-      if (generatedDiff !== 0) return generatedDiff;
-      return slotRank(b.slot) - slotRank(a.slot);
-    });
-
+  const { arc, entries } = result;
   const mentionCount = entries.length;
   const dayCount = Math.max(1, ...entries.map((entry) => entry.dayNumber));
 
@@ -168,10 +94,6 @@ export default async function ArcPage({ params }: ArcPageProps) {
       <SiteFooter className="mt-12" />
     </main>
   );
-}
-
-function slotRank(slot: Slot) {
-  return slot === "evening" ? 1 : 0;
 }
 
 function formatStatus(status: ArcStatus) {
