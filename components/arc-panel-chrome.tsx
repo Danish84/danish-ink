@@ -9,6 +9,21 @@ type Props = {
 };
 
 const EXIT_DURATION_MS = 220;
+const PANEL_VIEWPORT_TOP = 48;
+
+function getPanelTop() {
+  const activeMarker = document.querySelector<HTMLAnchorElement>(
+    ".arc-marker[data-active='true']",
+  );
+  const activeSection = activeMarker?.closest("section");
+  const activeHeading = activeSection?.querySelector("h2");
+  const firstHeading = document.querySelector("main section h2");
+  const headingTop =
+    (activeHeading ?? firstHeading)?.getBoundingClientRect().top ??
+    PANEL_VIEWPORT_TOP;
+
+  return Math.max(PANEL_VIEWPORT_TOP, Math.round(headingTop));
+}
 
 export function ArcPanelChrome({ children, slug }: Props) {
   const router = useRouter();
@@ -47,6 +62,33 @@ export function ArcPanelChrome({ children, slug }: Props) {
       if (closeTimer.current) clearTimeout(closeTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    let frame = 0;
+
+    const updatePanelTop = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty(
+          "--arc-panel-viewport-top",
+          `${getPanelTop()}px`,
+        );
+      });
+    };
+
+    updatePanelTop();
+    window.addEventListener("scroll", updatePanelTop, { passive: true });
+    window.addEventListener("resize", updatePanelTop);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updatePanelTop);
+      window.removeEventListener("resize", updatePanelTop);
+      document.documentElement.style.removeProperty(
+        "--arc-panel-viewport-top",
+      );
+    };
+  }, [slug]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
