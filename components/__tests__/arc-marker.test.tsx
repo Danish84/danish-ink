@@ -31,19 +31,13 @@ function stubMatchMedia(matches: boolean) {
   });
 }
 
-function stubHistoryLength(length: number) {
-  Object.defineProperty(window.history, "length", {
-    configurable: true,
-    get: () => length,
-  });
-}
-
 afterEach(() => {
   cleanup();
   push.mockReset();
   replace.mockReset();
   back.mockReset();
   mockPathname = "/";
+  window.sessionStorage.clear();
 });
 
 describe("ArcMarker", () => {
@@ -84,6 +78,9 @@ describe("ArcMarker", () => {
     expect(push).toHaveBeenCalledWith("/arc/grain-corridor", {
       scroll: false,
     });
+    expect(window.sessionStorage.getItem("danish.ink.arcPanelReturnTo")).toBe(
+      "/",
+    );
   });
 
   it("applies data-active=true when the pathname matches its arc slug", () => {
@@ -120,10 +117,13 @@ describe("ArcMarker", () => {
     expect(link.getAttribute("data-active")).toBeNull();
   });
 
-  it("clicking when active calls router.back instead of router.push", () => {
+  it("clicking when active replaces to the stored briefing URL without scrolling", () => {
     stubMatchMedia(true);
-    stubHistoryLength(5);
     mockPathname = "/arc/grain-corridor";
+    window.sessionStorage.setItem(
+      "danish.ink.arcPanelReturnTo",
+      "/?date=2026-05-18",
+    );
 
     render(
       <ArcMarker
@@ -138,14 +138,19 @@ describe("ArcMarker", () => {
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
     link.dispatchEvent(event);
 
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("/?date=2026-05-18", {
+      scroll: false,
+    });
+    expect(back).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
+    expect(window.sessionStorage.getItem("danish.ink.arcPanelReturnTo")).toBe(
+      null,
+    );
   });
 
-  it("clicking when active with no history replaces to /", () => {
+  it("clicking when active with no stored return URL replaces to /", () => {
     stubMatchMedia(true);
-    stubHistoryLength(1);
     mockPathname = "/arc/grain-corridor";
 
     render(

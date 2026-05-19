@@ -13,6 +13,17 @@ type Props = {
 };
 
 const PANEL_BREAKPOINT = "(min-width: 1280px)";
+const PANEL_RETURN_KEY = "danish.ink.arcPanelReturnTo";
+
+function currentBriefingUrl() {
+  return `${window.location.pathname}${window.location.search}`;
+}
+
+function closePanel(router: ReturnType<typeof useRouter>) {
+  const returnTo = window.sessionStorage.getItem(PANEL_RETURN_KEY) ?? "/";
+  window.sessionStorage.removeItem(PANEL_RETURN_KEY);
+  router.replace(returnTo, { scroll: false });
+}
 
 export function ArcMarker({ slug, title, dayNumber }: Props) {
   const router = useRouter();
@@ -54,11 +65,7 @@ export function ArcMarker({ slug, title, dayNumber }: Props) {
 
     if (isActive) {
       // Toggle: clicking the active marker closes the panel.
-      if (window.history.length > 1) {
-        router.back();
-      } else {
-        router.replace("/", { scroll: false });
-      }
+      closePanel(router);
       return;
     }
 
@@ -68,6 +75,7 @@ export function ArcMarker({ slug, title, dayNumber }: Props) {
       return;
     }
 
+    window.sessionStorage.setItem(PANEL_RETURN_KEY, currentBriefingUrl());
     router.push(href, { scroll: false });
   };
 

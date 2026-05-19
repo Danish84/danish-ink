@@ -10,6 +10,7 @@ type Props = {
 
 const EXIT_DURATION_MS = 220;
 const PANEL_VIEWPORT_TOP = 48;
+const PANEL_RETURN_KEY = "danish.ink.arcPanelReturnTo";
 
 function getPanelTop(slug: string | null) {
   const markerHref = slug ? `/arc/${slug}` : null;
@@ -38,11 +39,16 @@ export function ArcPanelChrome({ children, slug }: Props) {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigateAway = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.replace("/", { scroll: false });
+    const returnTo =
+      typeof window !== "undefined"
+        ? window.sessionStorage.getItem(PANEL_RETURN_KEY)
+        : null;
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(PANEL_RETURN_KEY);
     }
+
+    router.replace(returnTo ?? "/", { scroll: false });
   };
 
   const close = () => {
