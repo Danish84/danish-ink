@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type React from "react";
 
@@ -353,9 +352,9 @@ function HiddenFields({ adminKey, arc }: { adminKey: string; arc: AdminArc }) {
 
 function ViewLink({ slug }: { slug: string }) {
   return (
-    <Link className="admin-button admin-button-link" href={`/arc/${slug}`}>
+    <a className="admin-button admin-button-link" href={`/arc/${slug}`}>
       View
-    </Link>
+    </a>
   );
 }
 
