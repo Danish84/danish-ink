@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
 
 type ArcStatus = "active" | "closure_candidate" | "closed" | "proposed";
@@ -16,7 +16,14 @@ const PANEL_BREAKPOINT = "(min-width: 1280px)";
 
 export function ArcMarker({ slug, title, dayNumber }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const href = `/arc/${slug}`;
+  const isActive = pathname === href;
+  const otherArcOpen =
+    typeof pathname === "string" &&
+    pathname !== "/" &&
+    pathname.startsWith("/arc/") &&
+    pathname !== href;
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     // Honor modifier-key navigations and non-primary clicks.
@@ -44,11 +51,33 @@ export function ArcMarker({ slug, title, dayNumber }: Props) {
     }
 
     event.preventDefault();
+
+    if (isActive) {
+      // Toggle: clicking the active marker closes the panel.
+      if (window.history.length > 1) {
+        router.back();
+      } else {
+        router.replace("/", { scroll: false });
+      }
+      return;
+    }
+
+    if (otherArcOpen) {
+      // Cross-arc swap — avoid an extra history entry per arc hop.
+      router.replace(href, { scroll: false });
+      return;
+    }
+
     router.push(href, { scroll: false });
   };
 
   return (
-    <a className="arc-marker" href={href} onClick={handleClick}>
+    <a
+      className="arc-marker"
+      href={href}
+      onClick={handleClick}
+      data-active={isActive ? "true" : undefined}
+    >
       &mdash; {title}, day {dayNumber}
     </a>
   );

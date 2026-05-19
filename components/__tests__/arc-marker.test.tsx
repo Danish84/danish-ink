@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const push = vi.fn();
 const replace = vi.fn();
 const back = vi.fn();
+let mockPathname = "/";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace, back }),
+  usePathname: () => mockPathname,
 }));
 
 import { ArcMarker } from "../arc-marker";
@@ -29,11 +31,19 @@ function stubMatchMedia(matches: boolean) {
   });
 }
 
+function stubHistoryLength(length: number) {
+  Object.defineProperty(window.history, "length", {
+    configurable: true,
+    get: () => length,
+  });
+}
+
 afterEach(() => {
   cleanup();
   push.mockReset();
   replace.mockReset();
   back.mockReset();
+  mockPathname = "/";
 });
 
 describe("ArcMarker", () => {
@@ -74,5 +84,105 @@ describe("ArcMarker", () => {
     expect(push).toHaveBeenCalledWith("/arc/grain-corridor", {
       scroll: false,
     });
+  });
+
+  it("applies data-active=true when the pathname matches its arc slug", () => {
+    stubMatchMedia(true);
+    mockPathname = "/arc/grain-corridor";
+
+    render(
+      <ArcMarker
+        slug="grain-corridor"
+        title="Grain Corridor"
+        dayNumber={4}
+        status="active"
+      />,
+    );
+
+    const link = screen.getByRole("link");
+    expect(link.getAttribute("data-active")).toBe("true");
+  });
+
+  it("does not apply data-active when the pathname is a different arc", () => {
+    stubMatchMedia(true);
+    mockPathname = "/arc/other-arc";
+
+    render(
+      <ArcMarker
+        slug="grain-corridor"
+        title="Grain Corridor"
+        dayNumber={4}
+        status="active"
+      />,
+    );
+
+    const link = screen.getByRole("link");
+    expect(link.getAttribute("data-active")).toBeNull();
+  });
+
+  it("clicking when active calls router.back instead of router.push", () => {
+    stubMatchMedia(true);
+    stubHistoryLength(5);
+    mockPathname = "/arc/grain-corridor";
+
+    render(
+      <ArcMarker
+        slug="grain-corridor"
+        title="Grain Corridor"
+        dayNumber={4}
+        status="active"
+      />,
+    );
+
+    const link = screen.getByRole("link");
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("clicking when active with no history replaces to /", () => {
+    stubMatchMedia(true);
+    stubHistoryLength(1);
+    mockPathname = "/arc/grain-corridor";
+
+    render(
+      <ArcMarker
+        slug="grain-corridor"
+        title="Grain Corridor"
+        dayNumber={4}
+        status="active"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("link"));
+
+    expect(replace).toHaveBeenCalledWith("/", { scroll: false });
+    expect(back).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("cross-arc click uses router.replace with scroll:false", () => {
+    stubMatchMedia(true);
+    mockPathname = "/arc/other-arc";
+
+    render(
+      <ArcMarker
+        slug="grain-corridor"
+        title="Grain Corridor"
+        dayNumber={4}
+        status="active"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("link"));
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("/arc/grain-corridor", {
+      scroll: false,
+    });
+    expect(push).not.toHaveBeenCalled();
   });
 });

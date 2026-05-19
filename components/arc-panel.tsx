@@ -9,7 +9,7 @@ type Props = {
 export function ArcPanel({ result }: Props) {
   if (!result) {
     return (
-      <ArcPanelChrome>
+      <ArcPanelChrome slug={null}>
         <p className="editors-note">This arc could not be loaded.</p>
       </ArcPanelChrome>
     );
@@ -20,7 +20,7 @@ export function ArcPanel({ result }: Props) {
   const dayCount = Math.max(1, ...entries.map((entry) => entry.dayNumber));
 
   return (
-    <ArcPanelChrome>
+    <ArcPanelChrome slug={arc.slug}>
       <p className="panel-eyebrow">Story Arc</p>
       <h2 className="panel-title">{arc.title}</h2>
       <p className="panel-meta">
@@ -31,6 +31,9 @@ export function ArcPanel({ result }: Props) {
         &middot; {dayCount} {dayCount === 1 ? "day" : "days"} &middot;{" "}
         {mentionCount} {mentionCount === 1 ? "mention" : "mentions"}
       </p>
+      <a className="panel-open-full" href={`/arc/${arc.slug}`}>
+        Open full arc &rarr;
+      </a>
       <div className="panel-divider" />
       {entries.length > 0 ? (
         <div className="panel-log">

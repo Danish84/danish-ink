@@ -192,6 +192,12 @@
   outline: 1px solid var(--accent);
   outline-offset: 3px;
 }
+.briefing-body .arc-marker[data-active="true"] {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
 
 /* Editor's note — replaces the body when a slot couldn't be issued. */
 .editors-note {
@@ -702,6 +708,64 @@
   body:has([data-arc-panel]) .briefing-shift {
     transform: translateX(-220px);
   }
+
+  .briefing-shift {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .arc-panel {
+    animation: arc-panel-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .arc-panel.is-closing {
+    animation: arc-panel-exit 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  body:has(.arc-panel.is-closing) .briefing-shift {
+    transform: translateX(0);
+  }
+
+  .arc-content-fade-wrap {
+    animation: arc-content-fade 150ms ease-out both;
+  }
+}
+
+@keyframes arc-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes arc-panel-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes arc-content-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing-shift {
+    transition: none;
+  }
+  .arc-panel,
+  .arc-panel.is-closing,
+  .arc-content-fade-wrap {
+    animation: none;
+  }
 }
 
 .arc-panel .panel-eyebrow {
@@ -728,6 +792,28 @@
   text-transform: uppercase;
   margin-top: 14px;
   line-height: 1.6;
+}
+.arc-panel .panel-open-full {
+  display: inline-block;
+  margin-top: 14px;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
+}
+.arc-panel .panel-open-full:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+.arc-panel .panel-open-full:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
 }
 .arc-panel .panel-divider {
   height: 1px;
