@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { BriefingBody } from "@/components/briefing-body";
+import { LocalTime } from "@/components/local-time";
 import { DatePickerNav } from "@/components/date-picker-nav";
 import { RevealRoot } from "@/components/reveal-root";
 import { SiteFooter } from "@/components/site-footer";
@@ -239,7 +240,7 @@ function BriefingSection({
             letterSpacing: "0.16em",
           }}
         >
-          Generated {formatGeneratedAt(summary.generated_at)}
+          Generated <LocalTime value={summary.generated_at} />
         </p>
       </header>
 
@@ -351,13 +352,3 @@ function formatDate(date: string) {
   });
 }
 
-function formatGeneratedAt(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
-}
