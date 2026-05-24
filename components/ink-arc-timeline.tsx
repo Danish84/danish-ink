@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import type {
@@ -29,10 +29,11 @@ export function InkArcTimeline({
     orderedChapters[0]?.id ?? "",
   );
   const [sidebarOffset, setSidebarOffset] = useState(0);
+  const layoutRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const chapterRefs = useRef(new Map<string, HTMLElement>());
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     function updateActiveChapter() {
       const viewportCenter = window.innerHeight / 2;
       let closestId = orderedChapters[0]?.id ?? "";
@@ -57,10 +58,12 @@ export function InkArcTimeline({
           current === closestId ? current : closestId,
         );
         const activeNode = chapterRefs.current.get(closestId);
-        const mainNode = mainRef.current;
+        const layoutNode = layoutRef.current;
 
-        if (activeNode && mainNode) {
-          const nextOffset = Math.max(0, activeNode.offsetTop - mainNode.offsetTop);
+        if (activeNode && layoutNode) {
+          const activeRect = activeNode.getBoundingClientRect();
+          const layoutRect = layoutNode.getBoundingClientRect();
+          const nextOffset = Math.max(0, activeRect.top - layoutRect.top);
           setSidebarOffset((current) =>
             Math.abs(current - nextOffset) < 1 ? current : nextOffset,
           );
@@ -91,6 +94,7 @@ export function InkArcTimeline({
   return (
     <div
       className="ink-arc-layout"
+      ref={layoutRef}
       style={
         {
           "--ink-arc-inactive-opacity": inactiveOpacity,

@@ -72,6 +72,7 @@ describe("InkArcTimeline", () => {
 
   it("hides empty sidebar labels for the active chapter", () => {
     render(<InkArcTimeline chapters={chapters} />);
+    positionLayout({ top: 100, height: 900 });
     positionChapters({
       "chapter-new": { top: 900, height: 100 },
       "chapter-middle": { top: 250, height: 100 },
@@ -81,6 +82,9 @@ describe("InkArcTimeline", () => {
     fireEvent.scroll(window);
 
     const sidebar = screen.getByRole("complementary");
+    expect(sidebar.style.getPropertyValue("--ink-arc-sidebar-offset")).toBe(
+      "150px",
+    );
     expect(within(sidebar).queryByRole("heading", { name: "cast" })).toBeNull();
     expect(within(sidebar).getByRole("heading", { name: "elsewhere" })).toBeTruthy();
     expect(within(sidebar).getByRole("link", { name: "Related arc" })).toBeTruthy();
@@ -116,4 +120,24 @@ function positionChapters(
       }),
     });
   }
+}
+
+function positionLayout(position: { top: number; height: number }) {
+  const node = document.querySelector(".ink-arc-layout");
+  if (!node) return;
+
+  Object.defineProperty(node, "getBoundingClientRect", {
+    configurable: true,
+    value: () => ({
+      top: position.top,
+      bottom: position.top + position.height,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: position.height,
+      x: 0,
+      y: position.top,
+      toJSON: () => ({}),
+    }),
+  });
 }
