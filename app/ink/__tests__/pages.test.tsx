@@ -112,6 +112,9 @@ describe("/ink/[date]", () => {
 
     expect(screen.getByText("arc 16")).toBeInTheDocument();
     expect(screen.getByText("Sahel grid clock")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open arc 16: Sahel grid clock" }),
+    ).toHaveAttribute("href", "/ink/arc/sahel-grid-clock");
     expect(screen.getByText("Bond markets exhale selectively")).toBeInTheDocument();
 
     const archiveNav = screen.getByRole("navigation", {

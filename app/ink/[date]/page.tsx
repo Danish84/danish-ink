@@ -126,18 +126,20 @@ export default async function InkBriefingPage({
                           {arc ? (
                             <Link
                               href={`/ink/arc/${arc.slug}`}
-                              className="editorial-link editorial-meta"
+                              className="group block w-fit"
+                              aria-label={`Open ${formatArcLabel(arc)}: ${arc.title}`}
                             >
-                              {formatArcLabel(arc)}
+                              <span className="editorial-link editorial-meta inline-flex items-center gap-1.5">
+                                {formatArcLabel(arc)}
+                                <span aria-hidden="true">-&gt;</span>
+                              </span>
+                              <span className="mt-1 block text-[15px] leading-[1.35] italic transition-colors group-hover:text-accent group-focus-visible:text-accent">
+                                {arc.title}
+                              </span>
                             </Link>
                           ) : (
                             <p className="editorial-meta">Arc</p>
                           )}
-                          {arc ? (
-                            <p className="mt-1 text-[15px] leading-[1.35] italic">
-                              {arc.title}
-                            </p>
-                          ) : null}
                         </div>
                         <div className="flex flex-col gap-3 text-[17px] leading-[1.62]">
                           {movement.body.map((paragraph) => (
