@@ -46,6 +46,7 @@ yarn-error.log*
 /prd/
 /issues/
 /handoff.md
+/docs/
 
 # one-shot / scratch scripts — kept local only
 /temp-scripts/
