@@ -10,6 +10,8 @@ type Props = {
   selectedDate: string;
   availableDates: string[];
   latestDate: string;
+  routeMode?: "home" | "ink";
+  variant?: "dateline" | "meta";
 };
 
 export function DatePickerNav({
@@ -17,6 +19,8 @@ export function DatePickerNav({
   selectedDate,
   availableDates,
   latestDate,
+  routeMode = "home",
+  variant = "dateline",
 }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -57,7 +61,12 @@ export function DatePickerNav({
     const iso = formatLocalDate(day);
     if (!availableSet.has(iso)) return;
     setOpen(false);
-    const href = iso === latestDate ? "/" : `/?date=${iso}`;
+    const href =
+      routeMode === "ink"
+        ? `/ink/${iso}`
+        : iso === latestDate
+          ? "/"
+          : `/?date=${iso}`;
     startTransition(() => router.push(href));
   }
 
@@ -65,13 +74,22 @@ export function DatePickerNav({
     <div ref={rootRef} className="relative w-fit">
       <button
         type="button"
-        className="dateline-trigger"
+        className={
+          variant === "meta"
+            ? "ink-date-trigger editorial-meta"
+            : "dateline-trigger"
+        }
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="dateline-text">{dateLabel}</span>
-        <span className="dateline-chevron" aria-hidden="true">
+        <span className={variant === "meta" ? "ink-date-text" : "dateline-text"}>
+          {dateLabel}
+        </span>
+        <span
+          className={variant === "meta" ? "ink-date-chevron" : "dateline-chevron"}
+          aria-hidden="true"
+        >
           ▾
         </span>
       </button>
